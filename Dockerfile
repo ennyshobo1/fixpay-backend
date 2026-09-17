@@ -32,10 +32,8 @@ RUN composer install --no-dev --optimize-autoloader --no-interaction
 # Set permissions
 RUN chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache
 
-# CMD sh -c "\
-# php artisan config:clear && \
-# php artisan cache:clear && \
-# php artisan migrate --force && \
-# php artisan serve --host=0.0.0.0 --port=${PORT:-8080}"
-
-CMD sh -c "php artisan config:clear && php artisan migrate --force && php artisan cache:clear && php artisan db:seed --force && php artisan serve --host=0.0.0.0 --port=${PORT:-8080}"
+CMD sh -c "\
+php artisan config:clear && \
+php artisan migrate --force && \
+php artisan cache:clear && \
+php artisan serve --host=0.0.0.0 --port=${PORT:-8080}"

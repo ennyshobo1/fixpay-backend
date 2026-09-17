@@ -46,6 +46,8 @@ Route::prefix('auth')->group(function () {
 
 Route::post('portal/register', [PortalRegistrationController::class, 'register']);
 
+Route::post('payment/webhook', [PaymentWebhookController::class,'handle'])->middleware('idempotent');
+
 // Paystack webhook (public, verified by signature)
 Route::post('webhooks/paystack', [PaystackWebhookController::class, 'handle']);
 
@@ -91,7 +93,6 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     // Payments
     Route::prefix('payments')->group(function () {
-        Route::post('/webhook', [PaymentWebhookController::class,'handle'])->middleware('idempotent');
         Route::get('vtpass/services', [VtpassPaymentController::class, 'services']);
         Route::get('vtpass/variations', [VtpassPaymentController::class, 'variations']);
         Route::post('verify', [VtpassPaymentController::class, 'verify']);

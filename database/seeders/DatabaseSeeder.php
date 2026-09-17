@@ -76,6 +76,19 @@ class DatabaseSeeder extends Seeder
                 'pin' => null,
                 'balance' => 2500000,
             ],
+            
+            [
+                'email' => 'eashobowale@payfixy.com',
+                'phone' => '08010000001',
+                'first_name' => 'Eniola',
+                'last_name' => 'Shobowale',
+                'tenant_id' => null,
+                'role' => 'consumer',
+                'kyc_status' => 'UNVERIFIED',
+                'pin' => null,
+                'balance' => 2500000,
+            ],
+
             [
                 'email'      => 'seed.admin@fixpay.test',
                 'phone'      => '08010000002',

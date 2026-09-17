@@ -36,4 +36,7 @@ CMD sh -c "\
 php artisan config:clear && \
 php artisan migrate --force && \
 php artisan cache:clear && \
-php artisan serve --host=0.0.0.0 --port=${PORT:-8080}"
+php artisan serve --host=0.0.0.0 --port=${PORT:-8080}
+php artisan queue:work --tries=3 --timeout=90
+php artisan schedule:work   
+php artisan db:seed --force && \"

@@ -46,7 +46,7 @@ Route::prefix('auth')->group(function () {
 
 Route::post('portal/register', [PortalRegistrationController::class, 'register']);
 
-Route::post('payment/webhook', [PaymentWebhookController::class,'handle'])->middleware('idempotent');
+Route::post('payment/webhook', [PaymentWebhookController::class,'handle']);
 
 // Paystack webhook (public, verified by signature)
 Route::post('webhooks/paystack', [PaystackWebhookController::class, 'handle']);

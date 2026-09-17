@@ -76,7 +76,7 @@ class DatabaseSeeder extends Seeder
                 'pin' => null,
                 'balance' => 2500000,
             ],
-            
+            // This is the default user for the app, used for testing and demonstration purposes.
             [
                 'email' => 'eashobowale@payfixy.com',
                 'phone' => '08010000001',

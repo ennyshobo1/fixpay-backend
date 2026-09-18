@@ -41,9 +41,7 @@ class PayfixyPaymentService
                     [
                         'email' => $email,
 
-                        'amount' => $amount,
-
-                        'callback_url' => $callbackUrl,
+                        'amount' => $amount
                     ]
                 );
 

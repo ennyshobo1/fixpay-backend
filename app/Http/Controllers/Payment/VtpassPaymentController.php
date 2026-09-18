@@ -7,6 +7,7 @@ use App\Services\Payment\VtpassService;
 use GuzzleHttp\Client;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use App\Jobs\ProcessVtpassPaymentJob;
 
 class VtpassPaymentController extends Controller
 {
@@ -88,16 +89,65 @@ class VtpassPaymentController extends Controller
     }
 
     /** POST /api/payments/vtpass */
+    // public function pay(Request $request): JsonResponse
+    // {
+    //     $data = $request->validate([
+    //         'service_id'        => 'required|string',
+    //         'amount_kobo'       => 'required|integer|min:100',
+    //         'phone'             => 'required|string',
+    //         'billers_code'      => 'nullable|string',
+    //         'variation_code'    => 'nullable|string',
+    //         'subscription_type' => 'nullable|in:renew,change',
+    //         'idempotency_key'   => 'nullable|string|uuid',
+    //     ]);
+
+    //     $user = $request->user();
+    //     $wallet = $user->wallet;
+
+    //     if (! $wallet || $wallet->status !== 'ACTIVE') {
+    //         return response()->json(['message' => 'Wallet not available.'], 422);
+    //     }
+
+    //     $payment = $this->vtpass->initiate(
+    //         user: $user,
+    //         wallet: $wallet,
+    //         serviceId: $data['service_id'],
+    //         amountKobo: $data['amount_kobo'],
+    //         phone: $data['phone'],
+    //         billersCode: $data['billers_code'] ?? null,
+    //         variationCode: $data['variation_code'] ?? null,
+    //         extra: [
+    //             'idempotency_key'   => $data['idempotency_key'] ?? null,
+    //             'subscription_type' => $data['subscription_type'] ?? null,
+    //         ],
+    //     );
+
+    //     // Submit asynchronously via queue in production; sync here for simplicity
+    //     $payment = $this->vtpass->submit($payment);
+
+    //     return response()->json([
+    //         'payment_reference' => $payment->payment_reference,
+    //         'status' => $payment->payment_status,
+    //         'token' => $payment->token,
+    //         'units' => $payment->units,
+    //         'amount_kobo' => $payment->amount_kobo,
+    //         'fee_kobo' => $payment->fee_kobo,
+    //         'provider_code' => $payment->provider_code,
+    //         'vtpass_code' => $payment->provider_code,
+    //         'message' => $payment->payment_status === 'FAILED' ? ($payment->response_payload['response_description'] ?? 'Transaction failed.') : null,
+    //     ], $payment->payment_status === 'COMPLETED' ? 200 : 422);
+    // }
+
     public function pay(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'service_id'        => 'required|string',
-            'amount_kobo'       => 'required|integer|min:100',
-            'phone'             => 'required|string',
-            'billers_code'      => 'nullable|string',
-            'variation_code'    => 'nullable|string',
+            'service_id' => 'required|string',
+            'amount_kobo' => 'required|integer|min:100',
+            'phone' => 'required|string',
+            'billers_code' => 'nullable|string',
+            'variation_code' => 'nullable|string',
             'subscription_type' => 'nullable|in:renew,change',
-            'idempotency_key'   => 'nullable|string|uuid',
+            'idempotency_key' => 'nullable|string|uuid',
         ]);
 
         $user = $request->user();
@@ -116,25 +166,33 @@ class VtpassPaymentController extends Controller
             billersCode: $data['billers_code'] ?? null,
             variationCode: $data['variation_code'] ?? null,
             extra: [
-                'idempotency_key'   => $data['idempotency_key'] ?? null,
+                'idempotency_key' => $data['idempotency_key'] ?? null,
                 'subscription_type' => $data['subscription_type'] ?? null,
             ],
         );
 
-        // Submit asynchronously via queue in production; sync here for simplicity
-        $payment = $this->vtpass->submit($payment);
+        if (in_array($payment->payment_status, ['COMPLETED', 'PROCESSING'])) {
+            return response()->json([
+                'payment_reference' => $payment->payment_reference,
+                'status' => $payment->payment_status,
+                'amount_kobo' => $payment->amount_kobo,
+                'fee_kobo' => $payment->fee_kobo,
+                'provider_code' => $payment->provider_code,
+                'message' => 'Payment is being processed.',
+            ], 202);
+        }
+
+        ProcessVtpassPaymentJob::dispatch($payment->id);
+
+        $payment->update(['payment_status' => 'PROCESSING']);
 
         return response()->json([
             'payment_reference' => $payment->payment_reference,
-            'status' => $payment->payment_status,
-            'token' => $payment->token,
-            'units' => $payment->units,
+            'status' => 'PROCESSING',
             'amount_kobo' => $payment->amount_kobo,
             'fee_kobo' => $payment->fee_kobo,
-            'provider_code' => $payment->provider_code,
-            'vtpass_code' => $payment->provider_code,
-            'message' => $payment->payment_status === 'FAILED' ? ($payment->response_payload['response_description'] ?? 'Transaction failed.') : null,
-        ], $payment->payment_status === 'COMPLETED' ? 200 : 422);
+            'message' => 'Payment is being processed.',
+        ], 202);
     }
 
     /** GET /api/payments/vtpass/{reference} */
@@ -153,7 +211,12 @@ class VtpassPaymentController extends Controller
             'token' => $payment->token,
             'units' => $payment->units,
             'provider_code' => $payment->provider_code,
-            'vtpass_code' => $payment->provider_code,
+            'message' => match ($payment->payment_status) {
+                'COMPLETED' => 'Payment completed successfully.',
+                'FAILED' => $payment->response_payload['response_description'] ?? 'Payment failed.',
+                'PROCESSING', 'PENDING' => 'Payment is still being processed.',
+                default => 'Payment status is unavailable.',
+            },
             'completed_at' => $payment->completed_at,
             'failed_at' => $payment->failed_at,
         ]);

@@ -202,13 +202,15 @@ class WalletService
     {
         return DB::transaction(function () use ($wallet, $amountKobo, $correlationId, $description) {
             
-            Log::info('Before debit');
+            Log::info('Before debit', ['wallet_id' => $wallet->id, 'amount_kobo' => $amountKobo]);
+
+            $wallet = Wallet::where('id', $wallet->id)->lockForUpdate()->firstOrFail();
 
             if (! $wallet->hasSufficientBalance($amountKobo)) {
                 throw new \RuntimeException("Insufficient balance. Available: {$wallet->balance_kobo} kobo, Required: {$amountKobo} kobo.");
             }
 
-            $wallet->lockForUpdate()->find($wallet->id); // pessimistic lock
+            // $wallet->lockForUpdate()->find($wallet->id); // pessimistic lock
 
             $newBalance = $wallet->balance_kobo - $amountKobo;
 

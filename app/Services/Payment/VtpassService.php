@@ -111,16 +111,6 @@ class VtpassService
                 // Include subscription_type for TV services if stored at initiation
                 'subscription_type' => $payment->request_payload['subscription_type'] ?? null,
             ];
-
-
-
-            Log::info('VTPass API Request', [
-                'api_key' => config('services.vtpass.api_key'),
-                'secret_key' => config('services.vtpass.secret_key'),
-                'public_key' => config('services.vtpass.public_key'),
-                'base_url' => config('services.vtpass.base_url'),
-                'payload' => $payload
-            ]);
             
             $response = $this->http->post("{$this->baseUrl}/pay", [
                 'headers' => [
@@ -130,6 +120,8 @@ class VtpassService
                     'Content-Type' => 'application/json',
                 ],
                 'json' => array_filter($payload, fn ($v) => $v !== null),
+                'connect_timeout' => 10,
+                'timeout' => 90,
             ]);
 
             Log::info('After submit');
@@ -151,17 +143,23 @@ class VtpassService
 
             $this->log($payment, 'RESPONSE', $isSuccess ? 'COMPLETED' : 'FAILED', $body);
 
-            if (! $isSuccess) {
+            if (!$isSuccess) {
                 $this->reversePayment($payment);
             }
 
         } catch (\Throwable $e) {
             $payment->update([
-                'payment_status' => 'FAILED',
-                'failed_at' => now(),
+                'payment_status' => 'PROCESSING',
+                'response_payload' => [
+                    'error' => $e->getMessage(),
+                    'message' => 'VTPass response could not be confirmed.',
+                ],
             ]);
-            $this->log($payment, 'EXCEPTION', 'FAILED', ['error' => $e->getMessage()]);
-            $this->reversePayment($payment);
+
+            $this->log($payment, 'EXCEPTION', 'PROCESSING', [
+                'error' => $e->getMessage(),
+            ]);
+
             throw $e;
         }
 

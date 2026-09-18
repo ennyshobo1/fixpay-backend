@@ -45,7 +45,7 @@ class AuthController extends Controller
         // $this->walletService->createWallet($user);
 
         // Send email OTP
-        $this->otpService->send($user->email, 'email', 'verification');
+        // $this->otpService->send($user->email, 'email', 'verification');
 
         return response()->json([
             'message' => 'Registration successful. Check your email for a verification code.',

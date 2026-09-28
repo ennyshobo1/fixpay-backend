@@ -143,7 +143,7 @@ class VtpassPaymentController extends Controller
         $data = $request->validate([
             'service_id' => 'required|string',
             'amount_kobo' => 'required|integer|min:100',
-            'phone' => 'required|string',
+            'phone' => 'required|string|max:11',
             'billers_code' => 'nullable|string',
             'variation_code' => 'nullable|string',
             'subscription_type' => 'nullable|in:renew,change',

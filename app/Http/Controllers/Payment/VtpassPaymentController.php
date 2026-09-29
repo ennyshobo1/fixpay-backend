@@ -153,11 +153,11 @@ class VtpassPaymentController extends Controller
         $user = $request->user();
         $wallet = $user->wallet;
 
-        if (! $wallet || $wallet->status !== 'ACTIVE') {
-            return response()->json(['message' => 'Wallet not available.'], 422);
+        if (!$wallet || $wallet->status !== 'ACTIVE') {
+            $wallet = null;
         }
 
-        $payment = $this->vtpass->initiate(
+        $result = $this->vtpass->initiate(
             user: $user,
             wallet: $wallet,
             serviceId: $data['service_id'],
@@ -171,6 +171,11 @@ class VtpassPaymentController extends Controller
             ],
         );
 
+        $payment = $result['payment'] ?? $result;
+        $payfixyReference = $result['payfixy_reference'] ?? null;
+        $payfixyAccessCode = $result['payfixy_access_code'] ?? null;
+        $paymentUrl  = $result['payfixy_payment_url'] ?? null;
+
         if (in_array($payment->payment_status, ['COMPLETED', 'PROCESSING'])) {
             return response()->json([
                 'payment_reference' => $payment->payment_reference,
@@ -179,10 +184,15 @@ class VtpassPaymentController extends Controller
                 'fee_kobo' => $payment->fee_kobo,
                 'provider_code' => $payment->provider_code,
                 'message' => 'Payment is being processed.',
+                'paymentUrl' => $paymentUrl ?? null,
             ], 202);
         }
 
-        ProcessVtpassPaymentJob::dispatch($payment->id);
+        if($wallet && $wallet->status == 'ACTIVE') {
+            // Submit asynchronously via queue in production; sync here for simplicity
+            ProcessVtpassPaymentJob::dispatchSync($payment->id);
+            // ProcessVtpassPaymentJob::dispatch($payment->id);
+        } 
 
         $payment->update(['payment_status' => 'PROCESSING']);
 
@@ -192,6 +202,9 @@ class VtpassPaymentController extends Controller
             'amount_kobo' => $payment->amount_kobo,
             'fee_kobo' => $payment->fee_kobo,
             'message' => 'Payment is being processed.',
+            'payfixy_reference' => $payfixyReference ?? null,
+            'payfixy_access_code' => $payfixyAccessCode ?? null,
+            'payment_url' => $paymentUrl ?? null
         ], 202);
     }
 

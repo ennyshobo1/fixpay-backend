@@ -9,6 +9,7 @@ use App\Services\Kyc\MockKycAdapter;
 use App\Services\Kyc\PremblyKycAdapter;
 use App\Services\Payment\PaymentRailService;
 use App\Services\Payment\VtpassService;
+use App\Services\Payment\PayfixyPaymentService;
 use App\Services\Providus\ProvidusVirtualAccountAdapter;
 use App\Services\Wallet\DigitalBankingService;
 use App\Services\Transfer\TransferService;
@@ -64,8 +65,9 @@ class AppServiceProvider extends ServiceProvider
             return new VtpassService(
                 // verify:false disables SSL cert check on Windows dev — sandbox only, remove for production
                 http: new Client(['timeout' => 60, 'verify' => false]),
-                walletService: $app->make(WalletService::class),
+                walletService: null,
                 railService: $app->make(PaymentRailService::class),
+                payfixyPaymentService: $app->make(PayfixyPaymentService::class),
                 apiKey: config('services.vtpass.api_key', ''),
                 secretKey: config('services.vtpass.secret_key', ''),
                 publicKey: config('services.vtpass.public_key', ''),

@@ -28,6 +28,56 @@ class PayfixyPaymentService
     /**
      * Initialize Payment
      */
+
+    public function initializeServicePaymentDirectly(string $email,float $amount, string $vtpaymentId): array
+    {
+        try {
+
+            $response = $this->client()->post(
+                    "{$this->baseUrl}/api/v1/payment",
+                    [
+                        'email' => $email,
+
+                        'amount' => $amount,
+
+                        'callback_url' => config('services.payfixy.callback_url').'?vtpayment_id='.$vtpaymentId
+                    ]
+                );
+
+            if (!$response->successful()) {
+
+                throw new Exception($response->body());
+
+            }
+
+            $data = $response->json();
+
+            if (
+                !isset($data['status']) ||
+                $data['status'] !== true
+            ) {
+
+                throw new Exception(
+                    $data['message'] ?? 'Unable to initialize payment.'
+                );
+
+            }
+
+            return $data;
+
+        } catch (\Throwable $e) {
+
+            Log::error('Initialize Payment Error', [
+
+                'message' => $e->getMessage()
+
+            ]);
+
+            throw $e;
+
+        }
+    }
+
     public function initializePayment(
         string $email,
         float $amount,
@@ -77,7 +127,6 @@ class PayfixyPaymentService
             throw $e;
 
         }
-
     }
 
     /**

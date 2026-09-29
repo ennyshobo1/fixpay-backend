@@ -7,6 +7,7 @@ use App\Models\PaymentJournalEntry;
 use App\Models\VtpassPayment;
 use App\Models\Wallet;
 use App\Services\Wallet\WalletService;
+use App\Services\Payment\PayfixyPaymentService;
 use GuzzleHttp\Client;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -16,8 +17,9 @@ class VtpassService
 {
     public function __construct(
         private readonly Client $http,
-        private readonly WalletService $walletService,
+        private readonly ?WalletService $walletService,
         private readonly PaymentRailService $railService,
+        private readonly PayfixyPaymentService $payfixyPaymentService,
         private readonly string $apiKey,
         private readonly string $secretKey,
         private readonly string $publicKey,
@@ -29,14 +31,14 @@ class VtpassService
      */
     public function initiate(
         AppUser $user,
-        Wallet $wallet,
+        ?Wallet $wallet,
         string $serviceId,
         int $amountKobo,
         string $phone,
         ?string $billersCode = null,
         ?string $variationCode = null,
         array $extra = [],
-    ): VtpassPayment {
+    ) {
         
         set_time_limit(120);
 
@@ -59,12 +61,13 @@ class VtpassService
         ) {
             $totalDebit = $amountKobo + $feeKobo;
 
-            // Debit wallet (raises exception if insufficient)
-            $this->walletService->debit($wallet, $totalDebit, $paymentReference, "Bill payment: {$serviceId}");
-
+            if ($wallet && $wallet->status == 'ACTIVE') {
+                $this->walletService->debit($wallet, $totalDebit, $paymentReference, "Bill payment: {$serviceId}");
+            }
+            
             $payment = VtpassPayment::create([
                 'user_id'          => $user->id,
-                'wallet_id'        => $wallet->id,
+                'wallet_id'        => $wallet->id ?? null,
                 'tenant_id'        => $user->tenant_id,
                 'payment_reference'=> $paymentReference,
                 'idempotency_key'  => $idempotencyKey,
@@ -83,7 +86,23 @@ class VtpassService
                 ], fn ($v) => $v !== null),
             ]);
 
-            $this->log($payment, 'DEBIT', 'SUCCESS', ['total_debit_kobo' => $totalDebit]);
+            if(!$wallet || $wallet->status !== 'ACTIVE') {
+                // Initiate payfixy payment without debiting wallet   
+                $payfixyPayment = $this->payfixyPaymentService->initializeServicePaymentDirectly($user->email, $amountKobo /100, $payment->id);
+                Log::info('payfixy payment array', ['payfixy_payment' => $payfixyPayment]);
+                $this->log($payment, 'DEBIT', 'SKIPPED', ['reason' => 'No active wallet']);
+
+                return [
+                    'payment' => $payment,
+                    'payfixy_payment_url'=> $payfixyPayment['data']['payment_url'] ?? null,
+                    'payfixy_reference' => $payfixyPayment['data']['reference'] ?? null,
+                    'payfixy_access_code' => $payfixyPayment['data']['access_code'] ?? null,
+                ];
+
+            } else {
+                $this->log($payment, 'DEBIT', 'SUCCESS', ['total_debit_kobo' => $totalDebit]);
+            }
+
 
             return $payment;
         });

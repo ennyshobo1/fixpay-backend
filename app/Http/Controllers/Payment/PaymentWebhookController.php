@@ -58,9 +58,22 @@ class PaymentWebhookController extends Controller
                 //     ]);
                 // }
 
-                $payment = ProcessVtpassPaymentJob::dispatchSync($payment_id);
+                try
+                {
+                    $payment = ProcessVtpassPaymentJob::dispatchSync($payment_id);
 
-                Log::info ('payment response', ['payment' => $payment]);
+                    return response()->json([
+                        'status' => true,
+                        'message' => 'Transaction updated successfully.'
+                    ], 200);
+                }
+
+                catch(\Throwable $e){                   
+                    return response()->json([
+                        'status'=>false,
+                        'message'=>$e->getMessage()
+                    ]);
+                }
             }
 
             else

@@ -26,12 +26,14 @@ class PaymentWebhookController extends Controller
 
             $payload = $request->all();
 
-            if (empty($payload['transaction_reference'])) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'Transaction reference missing.'
-                ], 400);
-            }
+            $payment_id = $request->query('vtpayment_id');
+
+            // if (empty($payload['transaction_reference'])) {
+            //     return response()->json([
+            //         'status' => false,
+            //         'message' => 'Transaction reference missing.'
+            //     ], 400);
+            // }
 
             $payment_id = $request->query('vtpayment_id');
 
@@ -39,30 +41,26 @@ class PaymentWebhookController extends Controller
 
             if($payment_id) {
 
-                $vtPayment = VtpassPayment::where('id', $payment_id)->first();
+                $vtPayment = VtpassPayment::where('id', $payment_id)->firstorfail();
                 
                 // if($vtPayment) {
                 //     $vtPayment->update(['payment_status' => 'SUCCESS']);
                 // }
 
-                $amount = $payload['amount'] ?? 0;
-                $vtpayment_amount = $vtPayment->amount_kobo ?? 0;
+                // $amount = $payload['amount'] ?? 0;
+                // $vtpayment_amount = $vtPayment->amount_kobo ?? 0;
 
-                if(($amount * 100) != $vtpayment_amount) {
-                    Log::warning('Payment amount mismatch', [
-                        'vtpayment_id' => $payment_id,
-                        'expected_amount' => $vtpayment_amount,
-                        'received_amount' => $amount,
-                    ]);
-                }
+                // if(($amount * 100) != $vtpayment_amount) {
+                //     Log::warning('Payment amount mismatch', [
+                //         'vtpayment_id' => $payment_id,
+                //         'expected_amount' => $vtpayment_amount,
+                //         'received_amount' => $amount,
+                //     ]);
+                // }
 
-                else
-                {
-                    Log::info('Amount is same');
-                   $payment = ProcessVtpassPaymentJob::dispatchSync($payment_id);
+                $payment = ProcessVtpassPaymentJob::dispatchSync($payment_id);
 
-                   Log::info ('payment response', ['payment' => $payment]);
-                }
+                Log::info ('payment response', ['payment' => $payment]);
             }
 
             else

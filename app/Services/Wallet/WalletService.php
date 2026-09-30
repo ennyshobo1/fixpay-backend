@@ -198,7 +198,7 @@ class WalletService
      * Debit a wallet within an existing transaction.
      * Caller MUST wrap in DB::transaction().
      */
-    public function debit(Wallet $wallet, int $amountKobo, string $correlationId, string $description): LedgerEntry
+    public function debit(?Wallet $wallet, int $amountKobo, string $correlationId, string $description): LedgerEntry
     {
         return DB::transaction(function () use ($wallet, $amountKobo, $correlationId, $description) {
             
@@ -244,7 +244,7 @@ class WalletService
      * Credit a wallet within an existing transaction.
      * Caller MUST wrap in DB::transaction().
      */
-    public function credit(Wallet $wallet, int $amountKobo, string $correlationId, string $description): LedgerEntry
+    public function credit(?Wallet $wallet, int $amountKobo, string $correlationId, string $description): LedgerEntry
     {
         $wallet->lockForUpdate()->find($wallet->id);
 
@@ -269,7 +269,7 @@ class WalletService
     /**
      * Reverse a previously debited amount (e.g., failed payment).
      */
-    public function reverse(Wallet $wallet, int $amountKobo, string $correlationId, string $description): LedgerEntry
+    public function reverse(?Wallet $wallet, int $amountKobo, string $correlationId, string $description): LedgerEntry
     {
         return $this->credit($wallet, $amountKobo, $correlationId, "REVERSAL: {$description}");
     }

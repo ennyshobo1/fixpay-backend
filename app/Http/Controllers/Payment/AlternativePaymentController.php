@@ -30,4 +30,13 @@ class AlternativePaymentController extends Controller
             'message' => '... payment option comming soon'
         ], 400);
     }
+
+    public function history(Request $request)
+    {
+        $transactions = VtpassPayment::where('user_id', $request->user()->id)->get();
+
+        return response()->json([
+            'transactions' => $transactions
+        ], 400);
+    }
 }

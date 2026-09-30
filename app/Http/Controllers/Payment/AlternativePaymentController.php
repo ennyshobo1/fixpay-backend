@@ -33,7 +33,7 @@ class AlternativePaymentController extends Controller
 
     public function history(Request $request)
     {
-        $transactions = VtpassPayment::where('user_id', $request->user()->id)->get();
+        $transactions = VtpassPayment::where('user_id', $request->user()->id)->paginate(10);
 
         return response()->json([
             'transactions' => $transactions

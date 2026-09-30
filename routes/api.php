@@ -24,6 +24,7 @@ use App\Http\Controllers\User\UserController;
 use App\Http\Controllers\Wallet\WalletController;
 use App\Http\Controllers\Wallet\FundWalletController;
 use App\Http\Controllers\Payment\PaymentWebhookController;
+use App\Http\Controllers\Payment\AlternativePaymentController;
 use Illuminate\Support\Facades\Route;
 
 // ── Public routes ─────────────────────────────────────────────────────────
@@ -79,6 +80,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::post('nin', [KycController::class, 'verifyNin']);
         Route::get('status', [KycController::class, 'status']);
     });
+
+    Route::get('/transaction/history', [AlternativePaymentController::class, 'history']);
 
     // Wallet
     Route::prefix('wallet')->group(function () {

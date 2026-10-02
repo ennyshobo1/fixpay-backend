@@ -37,6 +37,6 @@ class AlternativePaymentController extends Controller
 
         return response()->json([
             'transactions' => $transactions
-        ], 400);
+        ], 200);
     }
 }
